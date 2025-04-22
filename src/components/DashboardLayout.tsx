@@ -24,14 +24,14 @@ const DashboardLayout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState(false);
+  const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { theme } = useTheme();
   const { language, setLanguage, direction, t } = useLanguage();
 
   const handleLogout = () => {
-    // Here you would typically handle logout logic
-    navigate('/');
+    navigate('/auth/login');
   };
 
   const navigation = [
@@ -59,7 +59,9 @@ const DashboardLayout = () => {
         initial={{ x: direction === 'ltr' ? -300 : 300 }}
         animate={{ x: isSidebarOpen ? 0 : (direction === 'ltr' ? -300 : 300) }}
         transition={{ duration: 0.3 }}
-        className={`fixed top-0 ${direction === 'ltr' ? 'left-0' : 'right-0'} z-40 h-screen w-72 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 shadow-lg`}
+        className={`fixed top-0 ${direction === 'ltr' ? 'left-0' : 'right-0'} z-40 h-screen w-72 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 shadow-lg transform lg:translate-x-0 ${
+          isSidebarOpen ? 'translate-x-0' : direction === 'ltr' ? '-translate-x-full' : 'translate-x-full'
+        }`}
       >
         <div className="flex flex-col h-full">
           {/* Logo */}
@@ -83,6 +85,7 @@ const DashboardLayout = () => {
                     ? 'bg-gradient-to-r from-blue-600 to-purple-600 text-white'
                     : 'hover:bg-gray-50 dark:hover:bg-gray-700/50 text-gray-700 dark:text-gray-300'
                 }`}
+                onClick={() => window.innerWidth < 1024 && setIsSidebarOpen(false)}
               >
                 <item.icon className={`w-5 h-5 ${
                   isActive(item.path) ? 'text-white' : 'text-gray-500 dark:text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400'
@@ -103,9 +106,9 @@ const DashboardLayout = () => {
                 alt="User"
                 className="w-10 h-10 rounded-full object-cover ring-2 ring-blue-100 dark:ring-blue-900"
               />
-              <div className="flex-1">
-                <h4 className="text-sm font-semibold text-gray-900 dark:text-white">John Doe</h4>
-                <p className="text-xs text-gray-500 dark:text-gray-400">john.doe@example.com</p>
+              <div className="flex-1 min-w-0">
+                <h4 className="text-sm font-semibold text-gray-900 dark:text-white truncate">John Doe</h4>
+                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">john.doe@example.com</p>
               </div>
               <button
                 onClick={handleLogout}
@@ -120,10 +123,10 @@ const DashboardLayout = () => {
       </motion.aside>
 
       {/* Main Content */}
-      <div className={`${isSidebarOpen ? (direction === 'ltr' ? 'ml-72' : 'mr-72') : 'ml-0 mr-0'} transition-all duration-300`}>
+      <div className={`${isSidebarOpen ? (direction === 'ltr' ? 'lg:ml-72' : 'lg:mr-72') : 'ml-0 mr-0'} transition-all duration-300`}>
         {/* Header */}
         <header className="sticky top-0 z-30 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 shadow-sm">
-          <div className="flex items-center justify-between px-6 py-4">
+          <div className="flex items-center justify-between px-4 py-4 lg:px-6">
             <div className="flex items-center gap-4">
               <button
                 onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -135,7 +138,17 @@ const DashboardLayout = () => {
                   <Menu className="w-6 h-6 text-gray-500 dark:text-gray-400" />
                 )}
               </button>
-              <div className="relative">
+
+              {/* Mobile Search Toggle */}
+              <button
+                onClick={() => setIsMobileSearchOpen(!isMobileSearchOpen)}
+                className="lg:hidden p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200"
+              >
+                <Search className="w-6 h-6 text-gray-500 dark:text-gray-400" />
+              </button>
+
+              {/* Search Bar - Desktop */}
+              <div className="hidden lg:relative lg:block">
                 <Search className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
                 <input
                   type="text"
@@ -144,6 +157,7 @@ const DashboardLayout = () => {
                 />
               </div>
             </div>
+
             <div className="flex items-center gap-4">
               {/* Language Selector */}
               <div className="relative">
@@ -152,7 +166,7 @@ const DashboardLayout = () => {
                   className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors duration-200"
                 >
                   <Languages className="w-6 h-6 text-gray-500 dark:text-gray-400" />
-                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">{language}</span>
+                  <span className="hidden sm:block text-sm font-medium text-gray-700 dark:text-gray-300">{language}</span>
                 </button>
                 {isLanguageDropdownOpen && (
                   <div className="absolute top-full mt-2 right-0 w-48 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 py-2">
@@ -190,13 +204,33 @@ const DashboardLayout = () => {
               />
             </div>
           </div>
+
+          {/* Mobile Search Bar */}
+          <div className={`lg:hidden px-4 pb-4 ${isMobileSearchOpen ? 'block' : 'hidden'}`}>
+            <div className="relative">
+              <Search className="w-5 h-5 text-gray-400 absolute left-3 top-1/2 transform -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder={t('search')}
+                className="w-full pl-10 pr-4 py-2 rounded-lg border border-gray-200 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-blue-100 dark:focus:ring-blue-900 focus:border-blue-500 transition-all duration-200 bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+              />
+            </div>
+          </div>
         </header>
 
         {/* Page Content */}
-        <main className="p-6">
+        <main className="p-4 lg:p-6">
           <Outlet />
         </main>
       </div>
+
+      {/* Mobile Sidebar Backdrop */}
+      {isSidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 lg:hidden z-30"
+          onClick={() => setIsSidebarOpen(false)}
+        ></div>
+      )}
     </div>
   );
 };
