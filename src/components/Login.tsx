@@ -1,6 +1,17 @@
 import React, { useState } from 'react';
-import { Mail, KeyRound, Eye, EyeOff, Loader2, AlertCircle } from 'lucide-react';
+// import { Mail, KeyRound, Eye, EyeOff, Loader2, AlertCircle, Apple, Facebook, Linkedin, ToggleLeft as Google, } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { Mail, KeyRound, Eye, EyeOff,Loader2, AlertCircle, } from 'lucide-react';
+import {
+  faGoogle,
+  faApple,
+  faFacebook,
+  faLinkedin
+}
+
+from '@fortawesome/free-brands-svg-icons';
+import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
+
 
 interface LoginProps {
   onRegisterClick: () => void;
@@ -117,6 +128,32 @@ const Login: React.FC<LoginProps> = ({ onRegisterClick, onForgotClick }) => {
           )}
         </button>
       </form>
+
+      <div className="relative">
+        <div className="absolute inset-0 flex items-center">
+          <div className="w-full border-t border-gray-200"></div>
+        </div>
+        <div className="relative flex justify-center text-sm">
+          <span className="px-4 bg-white text-gray-500">Or continue with</span>
+        </div>
+      </div>
+
+      <div className="flex justify-center gap-4">
+        {[
+          { icon: faGoogle, color: 'hover:bg-red-50' },
+          { icon: faApple, color: 'hover:bg-gray-100' },
+          { icon: faLinkedin, color: 'hover:bg-blue-50' },
+          { icon: faFacebook, color: 'hover:bg-blue-50' },
+        ].map(({ icon, color }, index) => (
+          <button
+            key={index}
+            type="button"
+            className={`p-3 rounded-xl border-2 border-gray-100 ${color} transition-all duration-200 hover:scale-110 hover:border-gray-200`}
+          >
+            <FontAwesomeIcon icon={icon} size="lg" className="text-gray-600" />
+          </button>
+        ))}
+      </div>
 
       <p className="text-center text-gray-600">
         Don't have an account?{' '}
