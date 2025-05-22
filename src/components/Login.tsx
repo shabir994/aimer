@@ -1,17 +1,7 @@
 import React, { useState } from 'react';
-// import { Mail, KeyRound, Eye, EyeOff, Loader2, AlertCircle, Apple, Facebook, Linkedin, ToggleLeft as Google, } from 'lucide-react';
+import { Mail, KeyRound, Eye, EyeOff, Loader2, AlertCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { Mail, KeyRound, Eye, EyeOff,Loader2, AlertCircle, } from 'lucide-react';
-import {
-  faGoogle,
-  faApple,
-  faFacebook,
-  faLinkedin
-}
-
-from '@fortawesome/free-brands-svg-icons';
-import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-
+import { Provider } from '@supabase/supabase-js';
 
 interface LoginProps {
   onRegisterClick: () => void;
@@ -27,7 +17,7 @@ const Login: React.FC<LoginProps> = ({ onRegisterClick, onForgotClick }) => {
   const [rememberMe, setRememberMe] = useState(false);
   const [validationError, setValidationError] = useState<string | null>(null);
 
-  const { signIn, error: authError, loading } = useAuth();
+  const { signIn, signInWithProvider, error: authError, loading } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -44,6 +34,10 @@ const Login: React.FC<LoginProps> = ({ onRegisterClick, onForgotClick }) => {
     }
 
     await signIn(formData.email, formData.password);
+  };
+
+  const handleSocialSignIn = async (provider: Provider) => {
+    await signInWithProvider(provider);
   };
 
   return (
@@ -134,25 +128,39 @@ const Login: React.FC<LoginProps> = ({ onRegisterClick, onForgotClick }) => {
           <div className="w-full border-t border-gray-200"></div>
         </div>
         <div className="relative flex justify-center text-sm">
-          <span className="px-4 bg-white text-gray-500">Or continue with</span>
+          <span className="px-2 bg-white text-gray-500">Or continue with</span>
         </div>
       </div>
 
-      <div className="flex justify-center gap-4">
-        {[
-          { icon: faGoogle, color: 'hover:bg-red-50' },
-          { icon: faApple, color: 'hover:bg-gray-100' },
-          { icon: faLinkedin, color: 'hover:bg-blue-50' },
-          { icon: faFacebook, color: 'hover:bg-blue-50' },
-        ].map(({ icon, color }, index) => (
-          <button
-            key={index}
-            type="button"
-            className={`p-3 rounded-xl border-2 border-gray-100 ${color} transition-all duration-200 hover:scale-110 hover:border-gray-200`}
-          >
-            <FontAwesomeIcon icon={icon} size="lg" className="text-gray-600" />
-          </button>
-        ))}
+      <div className="grid grid-cols-2 gap-4">
+        <button
+          onClick={() => handleSocialSignIn('google')}
+          className="flex items-center justify-center gap-3 px-4 py-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors duration-200"
+        >
+          <img src="https://www.google.com/favicon.ico" alt="Google" className="w-5 h-5" />
+          <span className="text-gray-600 font-medium">Google</span>
+        </button>
+        <button
+          onClick={() => handleSocialSignIn('apple')}
+          className="flex items-center justify-center gap-3 px-4 py-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors duration-200"
+        >
+          <img src="https://www.apple.com/favicon.ico" alt="Apple" className="w-5 h-5" />
+          <span className="text-gray-600 font-medium">Apple</span>
+        </button>
+        <button
+          onClick={() => handleSocialSignIn('github')}
+          className="flex items-center justify-center gap-3 px-4 py-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors duration-200"
+        >
+          <img src="https://github.com/favicon.ico" alt="GitHub" className="w-5 h-5" />
+          <span className="text-gray-600 font-medium">GitHub</span>
+        </button>
+        <button
+          onClick={() => handleSocialSignIn('facebook')}
+          className="flex items-center justify-center gap-3 px-4 py-3 border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors duration-200"
+        >
+          <img src="https://www.facebook.com/favicon.ico" alt="Facebook" className="w-5 h-5" />
+          <span className="text-gray-600 font-medium">Facebook</span>
+        </button>
       </div>
 
       <p className="text-center text-gray-600">

@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User } from '@supabase/supabase-js';
+import { User, Provider } from '@supabase/supabase-js';
 import { auth } from '../lib/auth';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { profileAPI } from '../lib/profile';
@@ -8,6 +8,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
+  signInWithProvider: (provider: Provider) => Promise<void>;
   signUp: (email: string, password: string, name: string) => Promise<void>;
   signOut: () => Promise<void>;
   error: string | null;
@@ -27,6 +28,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const currentUser = await auth.getCurrentUser();
         setUser(currentUser);
+        
+        // Initial route handling
+        if (currentUser && location.pathname === '/') {
+          navigate('/dashboard');
+        }
       } catch (error) {
         console.error('Error initializing auth:', error);
       } finally {
@@ -37,13 +43,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initAuth();
 
     const { data: { subscription } } = auth.onAuthStateChange((event, session) => {
-      const currentUser = session?.user ?? null;
-      setUser(currentUser);
+      const user = session?.user ?? null;
+      setUser(user);
 
+      // Handle auth state changes
       if (event === 'SIGNED_IN') {
         navigate('/dashboard');
       } else if (event === 'SIGNED_OUT') {
-        setUser(null);
         navigate('/');
       }
     });
@@ -59,8 +65,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setError(null);
       const { user, error } = await auth.signIn(email, password);
       if (error) throw new Error(error.message);
-
       if (user) {
+        // Check if profile exists, if not create one
         const profile = await profileAPI.getProfile(user.id);
         if (!profile) {
           await profileAPI.createProfile({
@@ -69,8 +75,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             email: user.email!,
           });
         }
-
-        setUser(user);
         navigate('/dashboard');
       }
     } catch (error) {
@@ -80,15 +84,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const signInWithProvider = async (provider: Provider) => {
+    try {
+      setLoading(true);
+      setError(null);
+      const { user, error } = await auth.signInWithProvider(provider);
+      if (error) throw new Error(error.message);
+      if (user) {
+        navigate('/dashboard');
+      }
+    } catch (error) {
+      setError(error instanceof Error ? error.message : 'Failed to sign in with social provider');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const signUp = async (email: string, password: string, name: string) => {
     try {
       setLoading(true);
       setError(null);
+      
       const { user, error: signUpError } = await auth.signUp(email, password, name);
       if (signUpError) throw new Error(signUpError.message);
-
+      
       if (user) {
-        setUser(user);
         navigate('/dashboard');
       }
     } catch (error) {
@@ -117,7 +137,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signIn, signUp, signOut, error }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      loading, 
+      signIn, 
+      signInWithProvider,
+      signUp, 
+      signOut, 
+      error 
+    }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,5 +1,5 @@
 import { supabase } from './supabase';
-import { User } from '@supabase/supabase-js';
+import { User, Provider } from '@supabase/supabase-js';
 
 export interface AuthError {
   message: string;
@@ -26,7 +26,7 @@ export const auth = {
           {
             id: data.user.id,
             email: data.user.email,
-            name: name.trim(), // Use provided name instead of email-based default
+            name: name.trim(),
             created_at: new Date().toISOString(),
           },
         ]);
@@ -62,6 +62,29 @@ export const auth = {
         user: null,
         error: {
           message: error instanceof Error ? error.message : 'Invalid login credentials',
+        },
+      };
+    }
+  },
+
+  async signInWithProvider(provider: Provider): Promise<AuthResponse> {
+    try {
+      const { data, error } = await supabase.auth.signInWithOAuth({
+        provider,
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`
+        }
+      });
+
+      if (error) throw error;
+
+      return { user: data.user, error: null };
+    } catch (error) {
+      console.error('Social sign in error:', error);
+      return {
+        user: null,
+        error: {
+          message: error instanceof Error ? error.message : 'Failed to sign in with social provider',
         },
       };
     }

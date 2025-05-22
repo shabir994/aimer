@@ -3,15 +3,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Target,
   Trophy,
-  TrendingUp,
   MessageSquare,
   Send,
   Sparkles,
   Star,
-  CheckCircle2,
-  Clock,
-  BarChart2,
-  ChevronRight,
   Plus,
   Trash2,
   X,
@@ -33,6 +28,7 @@ const MotivationHub = () => {
   const [dailyQuotes, setDailyQuotes] = useState<DailyQuote[]>([]);
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
 
   const [newGoal, setNewGoal] = useState<Omit<Goal, 'id' | 'progress' | 'status'>>({
     title: '',
@@ -108,14 +104,90 @@ const MotivationHub = () => {
   };
 
   const handleSendMessage = async () => {
-    if (!chatMessage.trim()) return;
+    if (!chatMessage.trim() || isTyping) return;
 
     try {
-      const updatedHistory = await dashboardAPI.sendChatMessage(chatMessage);
-      setChatHistory(updatedHistory);
+      // Add user message to chat history
+      const userMessage: ChatMessage = {
+        id: Date.now(),
+        type: 'user',
+        message: chatMessage,
+        timestamp: new Date().toISOString()
+      };
+
+      setChatHistory(prev => [...prev, userMessage]);
       setChatMessage('');
+      setIsTyping(true);
+
+      // Prepare messages for API - maintain conversation context
+      const messages = [
+        {
+          role: 'system',
+          content: 'You are an enthusiastic motivational AI assistant that helps with goal setting and personal development. Keep responses concise, positive, and inspiring.'
+        },
+        ...chatHistory.slice(-6).map(msg => ({
+          role: msg.type === 'user' ? 'user' : 'assistant',
+          content: msg.message
+        })),
+        {
+          role: 'user',
+          content: chatMessage
+        }
+      ];
+
+      // Call DeepSeek API with enhanced error handling
+      const response = await fetch('https://api.deepseek.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer sk-20dd0fe2674b4cf189a90c0c8f86a649`
+        },
+        body: JSON.stringify({
+          model: 'deepseek-chat',
+          messages: messages,
+          temperature: 0.7,
+          max_tokens: 500
+        })
+      });
+
+      // Check for both network and API errors
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error?.message || 'Failed to get response from AI');
+      }
+
+      const data = await response.json();
+      
+      if (!data.choices?.[0]?.message?.content) {
+        throw new Error('Invalid response format from API');
+      }
+
+      const aiMessage = data.choices[0].message.content;
+
+      // Add AI response to chat history
+      const aiChatMessage: ChatMessage = {
+        id: Date.now() + 1,
+        type: 'ai',
+        message: aiMessage,
+        timestamp: new Date().toISOString()
+      };
+
+      setChatHistory(prev => [...prev, aiChatMessage]);
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error('Chatbot error:', error);
+      
+      // Add more helpful error message
+      const errorMessage: ChatMessage = {
+        id: Date.now() + 1,
+        type: 'ai',
+        message: 'I apologize for the inconvenience. Let me try that again. ' + 
+                 'Could you please rephrase your question or ask something else?',
+        timestamp: new Date().toISOString()
+      };
+
+      setChatHistory(prev => [...prev, errorMessage]);
+    } finally {
+      setIsTyping(false);
     }
   };
 
@@ -146,7 +218,6 @@ const MotivationHub = () => {
     );
   }
 
-  // Get minimum date (today)
   const minDate = new Date().toISOString().split('T')[0];
 
   return (
@@ -295,33 +366,61 @@ const MotivationHub = () => {
 
           {activeTab === 'chat' && (
             <div className="max-w-3xl mx-auto">
-              <div className="bg-gray-50 rounded-xl p-4 mb-4 h-[400px] overflow-y-auto">
+              <div className="bg-gray-50 rounded-xl p-4 mb-4 h-[400px] overflow-y-auto flex flex-col">
+                {chatHistory.length === 0 && (
+                  <div className="flex-1 flex flex-col items-center justify-center text-center p-6">
+                    <div className="p-4 bg-blue-100 rounded-full mb-4">
+                      <Sparkles className="w-8 h-8 text-blue-600" />
+                    </div>
+                    <h3 className="text-xl font-semibold text-gray-800 mb-2">Hello! I'm your AI motivation assistant</h3>
+                    <p className="text-gray-600 max-w-md">How can I help you with your goals and motivation today?</p>
+                  </div>
+                )}
+                
                 {chatHistory.map((msg, index) => (
                   <div
                     key={index}
-                    className={`flex items-start gap-3 mb-4 ${
-                      msg.type === 'user' ? 'flex-row-reverse' : ''
-                    }`}
+                    className={`flex mb-4 ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}
                   >
-                    <div className={`p-2 rounded-lg ${
-                      msg.type === 'user' ? 'bg-blue-600' : 'bg-white'
+                    <div className={`flex items-start gap-3 max-w-[80%] ${
+                      msg.type === 'user' ? 'flex-row-reverse' : ''
                     }`}>
-                      {msg.type === 'user' ? (
-                        <MessageSquare className="w-5 h-5 text-white" />
-                      ) : (
-                        <Sparkles className="w-5 h-5 text-blue-600" />
-                      )}
-                    </div>
-                    <div className={`px-4 py-3 rounded-xl max-w-[80%] ${
-                      msg.type === 'user'
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-white shadow-md'
-                    }`}>
-                      {msg.message}
+                      <div className={`p-2 rounded-lg ${
+                        msg.type === 'user' ? 'bg-blue-600' : 'bg-white'
+                      }`}>
+                        {msg.type === 'user' ? (
+                          <MessageSquare className="w-5 h-5 text-white" />
+                        ) : (
+                          <Sparkles className="w-5 h-5 text-blue-600" />
+                        )}
+                      </div>
+                      <div className={`px-4 py-3 rounded-xl ${
+                        msg.type === 'user'
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-white shadow-md'
+                      }`}>
+                        {msg.message}
+                      </div>
                     </div>
                   </div>
                 ))}
+                
+                {isTyping && (
+                  <div className="flex justify-start mb-4">
+                    <div className="flex items-start gap-3 max-w-[80%]">
+                      <div className="p-2 rounded-lg bg-white">
+                        <Sparkles className="w-5 h-5 text-blue-600" />
+                      </div>
+                      <div className="px-4 py-3 rounded-xl bg-white shadow-md flex items-center gap-2">
+                        <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce"></div>
+                        <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                        <div className="w-2 h-2 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
+              
               <div className="flex gap-3">
                 <input
                   type="text"
@@ -330,10 +429,16 @@ const MotivationHub = () => {
                   placeholder="Type your message..."
                   className="flex-1 px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-blue-100 focus:border-blue-500"
                   onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                  disabled={isTyping}
                 />
                 <button
                   onClick={handleSendMessage}
-                  className="px-6 py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors duration-200"
+                  disabled={isTyping || !chatMessage.trim()}
+                  className={`px-6 py-3 rounded-xl transition-colors duration-200 ${
+                    isTyping || !chatMessage.trim()
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-blue-600 text-white hover:bg-blue-700'
+                  }`}
                 >
                   <Send size={20} />
                 </button>

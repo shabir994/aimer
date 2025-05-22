@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import {
@@ -14,24 +14,64 @@ import {
   Menu,
   X,
   LogOut,
-  Languages
+  Languages,
+  Loader2
 } from 'lucide-react';
 import NotificationDropdown from './NotificationDropdown';
 import { useTheme } from '../contexts/ThemeContext';
 import { useLanguage } from '../contexts/LanguageContext';
+import { useAuth } from '../contexts/AuthContext';
+import { profileAPI } from '../lib/profile';
 
 const DashboardLayout = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isLanguageDropdownOpen, setIsLanguageDropdownOpen] = useState(false);
   const [isMobileSearchOpen, setIsMobileSearchOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [profile, setProfile] = useState<any>(null);
+  
   const location = useLocation();
   const navigate = useNavigate();
   const { theme } = useTheme();
   const { language, setLanguage, direction, t } = useLanguage();
+  const { user, signOut } = useAuth();
 
-  const handleLogout = () => {
-    navigate('/auth/login');
+  useEffect(() => {
+    const fetchProfile = async () => {
+      if (!user) return;
+      
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await profileAPI.getProfile(user.id);
+        setProfile(data);
+      } catch (error) {
+        console.error('Error fetching profile:', error);
+        setError('Failed to load profile');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProfile();
+
+    // Set up a profile refresh interval
+    const refreshInterval = setInterval(fetchProfile, 30000); // Refresh every 30 seconds
+
+    return () => {
+      clearInterval(refreshInterval);
+    };
+  }, [user]);
+
+  const handleLogout = async () => {
+    try {
+      await signOut();
+      navigate('/auth/login');
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
   };
 
   const navigation = [
@@ -100,24 +140,38 @@ const DashboardLayout = () => {
 
           {/* User Profile Preview */}
           <div className="p-4 border-t border-gray-200 dark:border-gray-700">
-            <div className="flex items-center gap-3 p-4 rounded-xl bg-gray-50 dark:bg-gray-700/50">
-              <img
-                src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150"
-                alt="User"
-                className="w-10 h-10 rounded-full object-cover ring-2 ring-blue-100 dark:ring-blue-900"
-              />
-              <div className="flex-1 min-w-0">
-                <h4 className="text-sm font-semibold text-gray-900 dark:text-white truncate">John Doe</h4>
-                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">john.doe@example.com</p>
+            {loading ? (
+              <div className="flex items-center justify-center p-4">
+                <Loader2 className="w-6 h-6 text-blue-600 animate-spin" />
               </div>
-              <button
-                onClick={handleLogout}
-                className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/50 transition-colors duration-200 group"
-                title="Logout"
-              >
-                <LogOut className="w-5 h-5 text-gray-500 dark:text-gray-400 group-hover:text-red-600 dark:group-hover:text-red-400" />
-              </button>
-            </div>
+            ) : error ? (
+              <div className="text-center text-red-600 p-4">
+                {error}
+              </div>
+            ) : profile ? (
+              <div className="flex items-center gap-3 p-4 rounded-xl bg-gray-50 dark:bg-gray-700/50">
+                <img
+                  src={profile.avatar_url || "https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=150"}
+                  alt={profile.name}
+                  className="w-10 h-10 rounded-full object-cover ring-2 ring-blue-100 dark:ring-blue-900"
+                />
+                <div className="flex-1 min-w-0">
+                  <h4 className="text-sm font-semibold text-gray-900 dark:text-white truncate">
+                    {profile.name}
+                  </h4>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                    {profile.email}
+                  </p>
+                </div>
+                <button
+                  onClick={handleLogout}
+                  className="p-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/50 transition-colors duration-200 group"
+                  title="Logout"
+                >
+                  <LogOut className="w-5 h-5 text-gray-500 dark:text-gray-400 group-hover:text-red-600 dark:group-hover:text-red-400" />
+                </button>
+              </div>
+            ) : null}
           </div>
         </div>
       </motion.aside>
